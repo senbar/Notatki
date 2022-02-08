@@ -110,3 +110,15 @@ ResourceId: api://56373378-b187-4ffe-9650-ccb784e32b13
 Instance: https://login.microsoftonline.com/
 TenantId: 1beb8417-6784-49e0-9555-4e6b5d238434
 ```
+Client setup is done in the example for console so it doenst follow these notes.
+Source: https://dotnetplaybook.com/secure-a-net-core-api-using-bearer-authentication/
+
+
+From reddit comment https://www.reddit.com/r/dotnet/comments/okbo7i/wtf_happened_to_web_app_security_the_past_5_years/: 
+Is your SPA being served by the web API project? If yes, then you don't need OIDC. ASP.NET Identity with the default cookie settings should be fine. Just configure the route that serves your SPA to require authorization. Once authorized, your SPA will have the appropriate auth cookie and that will automatically get sent along with every JS API request you make. The cookie will be http-only (the browser won't allow any JS code to directly access it) and encrypted. This combined with asp.net's default CSRF protections is about as secure as it gets. Your SPA will have to handle unauthorized web endpoint failures and redirect to login or reload the page or something when they occur so the API backend can redirect to Identity to get a fresh login.
+
+Now, let's say you're hosting your SPA on Netlify at https://www.mysite.whatever. And you host you web api on digital ocean at https://api.mysite.whatever. You can't use cookie auth here since A) your API server isn't serving your SPA so it can't set the auth cookie. B) even if you somehow get a cookie or a jwt, it won't be http-only or secure. It won't get automatically sent along with your API requests. It'll be completely open to any malicious scripts to steal or click jack. OIDC can get you most of the way there as far as solving this problem. The protocol is verifiable and, in the end you'll have a cryptographically signed jwt and a pretty decent JS library to manage the tokens. Now, most solutions you'll find will still have you storing this jwt in the open in something like localStorage. This still leaves you vulnerable to some malicious scripts stealing your valid token. If your app is on an internal network this may be an acceptable risk. If your app is on the public internet, however, the most secure design is the backend-for-frontend model. Basically you write a super thin backend server that serves your SPA and handles the OIDC auth and can set the secure cookie. That backend would then proxy all API requests to your API server running on a different domain, sending the OIDC auth token. You get best of both worlds: secure http-only cookies that "just work" with all your API calls (no js library to manage tokens in the open and append authorization headers to all you API requests), and a nice decoupling of your API server from your web apps.
+
+It's my advice that, unless you absolutely, 100% need to decouple your frontend from your API server, just have your API serve your frontend and skip all the OIDC/IdentityServer/backend-for-frontend headache.
+
+OIDC== OpenID Connect 
